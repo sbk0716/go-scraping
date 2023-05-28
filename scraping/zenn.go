@@ -145,7 +145,7 @@ func MyArticles() {
 	// fmt.Println("HTML Body:")
 	// fmt.Println(htmlBody)
 
-	// Bodyを読み込む
+	// StringからReaderに変換したBodyを読み込む
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlBody))
 	if err != nil {
 		log.Fatal(err)
@@ -156,7 +156,7 @@ func MyArticles() {
 		title := s.Find(".ArticleCard_title__UnBHE").Text()
 		updatedAt := s.Find(".ArticleCard_dateAndLikes___O23P > time").Text()
 		likes := s.Find(".ArticleCard_dateAndLikes___O23P > .ArticleCard_likes__YCOFM").Text()
-		fmt.Printf("%d タイトル: %v / 更新日時: %v いいね: %v\n", i, title, updatedAt, likes)
+		fmt.Printf("%d タイトル: %v / 更新日時: %v / いいね: %v\n", i, title, updatedAt, likes)
 	})
 	fmt.Printf("########################################\n\n")
 }
