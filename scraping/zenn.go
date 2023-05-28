@@ -1,13 +1,16 @@
 package scraping
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/chromedp/chromedp"
 )
 
 func ExampleScrape() {
@@ -76,7 +79,6 @@ func ArticlesExplore() {
 	if res.StatusCode != 200 {
 		log.Fatalf("status code error: %d %s", res.StatusCode, res.Status)
 	}
-	time.Sleep(10 * time.Second)
 
 	// Bodyを読み込む
 	doc, err := goquery.NewDocumentFromReader(res.Body)
@@ -102,26 +104,61 @@ func MyArticles() {
 	targetUrl := fmt.Sprintf("https://zenn.dev/%s", userName)
 	fmt.Printf("targetUrl: %#v\n", targetUrl)
 
-	// 読み込むページ
-	res, err := http.Get(targetUrl)
+	// Chromedpのオプションを設定
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", true),
+		chromedp.Flag("disable-gpu", true),
+		chromedp.Flag("no-sandbox", true),
+	)
+
+	// Chromedpのセッションを開始
+	ctx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer cancel()
+
+	// Chromedpを使用してブラウザを制御
+	ctx, cancel = chromedp.NewContext(ctx)
+	defer cancel()
+
+	// タイムアウトを設定
+	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	// ページを開く
+	err := chromedp.Run(ctx,
+		chromedp.Navigate(targetUrl),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer res.Body.Close()
-	if res.StatusCode != 200 {
-		log.Fatalf("status code error: %d %s", res.StatusCode, res.Status)
+
+	// ページが完全に読み込まれるまで待機
+	time.Sleep(2 * time.Second)
+
+	// ページのHTMLのBodyを取得
+	var htmlBody string
+	err = chromedp.Run(ctx,
+		chromedp.EvaluateAsDevTools(`document.body.innerHTML`, &htmlBody),
+	)
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	// 取得したHTMLのBodyを表示
+	// fmt.Println("HTML Body:")
+	// fmt.Println(htmlBody)
 
 	// Bodyを読み込む
-	doc, err := goquery.NewDocumentFromReader(res.Body)
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlBody))
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// articleタグの中からタイトルと更新日時のclassを取得する
+	fmt.Printf("########################################\n")
+	// articleタグの中からタイトルと更新日時といいねのclassを取得する
 	doc.Find("article").Each(func(i int, s *goquery.Selection) {
 		title := s.Find(".ArticleCard_title__UnBHE").Text()
-		updatedAt := s.Find(".ArticleCard_dateAndLikes___O23P").Text()
-		fmt.Printf("%d タイトル: %v / 更新日時: %v\n", i, title, updatedAt)
+		updatedAt := s.Find(".ArticleCard_dateAndLikes___O23P > time").Text()
+		likes := s.Find(".ArticleCard_dateAndLikes___O23P > .ArticleCard_likes__YCOFM").Text()
+		fmt.Printf("%d タイトル: %v / 更新日時: %v いいね: %v\n", i, title, updatedAt, likes)
 	})
+	fmt.Printf("########################################\n\n")
 }
