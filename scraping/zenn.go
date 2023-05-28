@@ -96,13 +96,11 @@ func ArticlesExplore() {
 }
 
 func MyArticles() {
-	userName := "sbk0716"
-	if envUserName := os.Getenv("USERNAME"); envUserName != "" {
-		userName = envUserName
+	zennUser := "sbk0716"
+	if envZennUser := os.Getenv("ZENNUSER"); envZennUser != "" {
+		zennUser = envZennUser
 	}
-	fmt.Printf("userName: %#v\n", userName)
-	targetUrl := fmt.Sprintf("https://zenn.dev/%s", userName)
-	fmt.Printf("targetUrl: %#v\n", targetUrl)
+	targetUrl := fmt.Sprintf("https://zenn.dev/%s", zennUser)
 
 	// Chromedpのオプションを設定
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
